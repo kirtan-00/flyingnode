@@ -1,0 +1,65 @@
+iata,name,city,country,is_origin
+DEL,Indira Gandhi International,Delhi,India,1
+BOM,Chhatrapati Shivaji Maharaj International,Mumbai,India,1
+BLR,Kempegowda International,Bengaluru,India,1
+BKK,Suvarnabhumi,Bangkok,Thailand,0
+DMK,Don Mueang,Bangkok,Thailand,0
+SIN,Changi,Singapore,Singapore,0
+KUL,Kuala Lumpur International,Kuala Lumpur,Malaysia,0
+DPS,Ngurah Rai,Bali,Indonesia,0
+CGK,Soekarno-Hatta,Jakarta,Indonesia,0
+HAN,Noi Bai,Hanoi,Vietnam,0
+SGN,Tan Son Nhat,Ho Chi Minh City,Vietnam,0
+MNL,Ninoy Aquino,Manila,Philippines,0
+HKG,Hong Kong International,Hong Kong,Hong Kong,0
+TPE,Taoyuan,Taipei,Taiwan,0
+ICN,Incheon,Seoul,South Korea,0
+NRT,Narita,Tokyo,Japan,0
+HND,Haneda,Tokyo,Japan,0
+KIX,Kansai,Osaka,Japan,0
+PEK,Capital,Beijing,China,0
+PVG,Pudong,Shanghai,China,0
+DXB,Dubai International,Dubai,UAE,0
+AUH,Abu Dhabi International,Abu Dhabi,UAE,0
+DOH,Hamad International,Doha,Qatar,0
+MCT,Muscat International,Muscat,Oman,0
+JED,King Abdulaziz International,Jeddah,Saudi Arabia,0
+RUH,King Khalid International,Riyadh,Saudi Arabia,0
+CAI,Cairo International,Cairo,Egypt,0
+IST,Istanbul,Istanbul,Turkey,0
+ATH,Athens,Athens,Greece,0
+FCO,Fiumicino,Rome,Italy,0
+MXP,Malpensa,Milan,Italy,0
+MAD,Barajas,Madrid,Spain,0
+BCN,El Prat,Barcelona,Spain,0
+CDG,Charles de Gaulle,Paris,France,0
+ORY,Orly,Paris,France,0
+FRA,Frankfurt,Frankfurt,Germany,0
+MUC,Munich,Munich,Germany,0
+AMS,Schiphol,Amsterdam,Netherlands,0
+BRU,Brussels,Brussels,Belgium,0
+ZRH,Zurich,Zurich,Switzerland,0
+VIE,Vienna,Vienna,Austria,0
+CPH,Copenhagen,Copenhagen,Denmark,0
+ARN,Arlanda,Stockholm,Sweden,0
+OSL,Gardermoen,Oslo,Norway,0
+LHR,Heathrow,London,United Kingdom,0
+LGW,Gatwick,London,United Kingdom,0
+MAN,Manchester,Manchester,United Kingdom,0
+DUB,Dublin,Dublin,Ireland,0
+JFK,John F Kennedy,New York,United States,0
+EWR,Newark Liberty,Newark,United States,0
+SFO,San Francisco International,San Francisco,United States,0
+LAX,Los Angeles International,Los Angeles,United States,0
+ORD,O'Hare,Chicago,United States,0
+YYZ,Toronto Pearson,Toronto,Canada,0
+YVR,Vancouver International,Vancouver,Canada,0
+SYD,Sydney Kingsford Smith,Sydney,Australia,0
+MEL,Melbourne Tullamarine,Melbourne,Australia,0
+AKL,Auckland,Auckland,New Zealand,0
+CMB,Bandaranaike,Colombo,Sri Lanka,0
+KTM,Tribhuvan,Kathmandu,Nepal,0
+MLE,Velana,Malé,Maldives,0
+DAR,Julius Nyerere,Dar es Salaam,Tanzania,0
+NBO,Jomo Kenyatta,Nairobi,Kenya,0
+JNB,OR Tambo,Johannesburg,South Africa,0
