@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Optional
 
 from droplet import db
 from droplet.deal_rule import Baseline, Observation, evaluate
@@ -11,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("poller")
 
 
-def load_baseline(conn, route_id: int, travel_month: str) -> Baseline | None:
+def load_baseline(conn, route_id: int, travel_month: str) -> Optional[Baseline]:
     r = conn.execute(
         "SELECT median_price_inr, sample_count FROM route_baselines WHERE route_id=? AND travel_month=?",
         (route_id, travel_month),

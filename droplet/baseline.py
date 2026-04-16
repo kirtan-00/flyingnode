@@ -2,6 +2,7 @@ import os
 import sqlite3
 import statistics
 from datetime import datetime, timedelta
+from typing import Dict, List, Tuple
 
 LOOKBACK_DAYS = 90
 
@@ -16,7 +17,7 @@ def recompute_all(conn: sqlite3.Connection) -> None:
         """,
         (cutoff,),
     ).fetchall()
-    by_key: dict[tuple[int, str], list[int]] = {}
+    by_key: Dict[Tuple[int, str], List[int]] = {}
     for r in rows:
         by_key.setdefault((r["route_id"], r["travel_month"]), []).append(r["price_inr"])
     conn.execute("DELETE FROM route_baselines")

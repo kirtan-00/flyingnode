@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body { background: #F6F7FB; }
+body { font-feature-settings: "ss01", "cv11"; -webkit-font-smoothing: antialiased; }

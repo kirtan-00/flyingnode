@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional  # for 3.8+ compat on droplet
 
 
 @dataclass(frozen=True)

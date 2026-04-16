@@ -1,5 +1,6 @@
 import os
 from datetime import date
+from typing import Optional
 import requests
 from dateutil.relativedelta import relativedelta
 
@@ -13,7 +14,7 @@ class TPClient:
     Currency fixed to INR for the India-first use case.
     """
 
-    def __init__(self, token: str | None = None, marker: str | None = None):
+    def __init__(self, token: Optional[str] = None, marker: Optional[str] = None):
         self.token = token or os.environ["TRAVELPAYOUTS_TOKEN"]
         self.marker = marker or os.environ.get("TRAVELPAYOUTS_MARKER", "")
         self.s = requests.Session()
@@ -32,7 +33,12 @@ class TPClient:
             timeout=15,
         )
         r.raise_for_status()
-        return r.json().get("data", [])
+        data = r.json().get("data", [])
+        # Travelpayouts returns either a list of dicts or a dict keyed by date.
+        # Normalise to a list of dicts.
+        if isinstance(data, dict):
+            data = list(data.values())
+        return [d for d in data if isinstance(d, dict)]
 
     def cheapest_by_month(self, origin: str, destination: str, n_months: int = 6):
         out = []
