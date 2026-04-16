@@ -33,118 +33,127 @@ These are deferred to v1+ once we have baseline data and evidence the deals are 
 2. Sees a reverse-chronological feed of live deal cards: `BLR → Tokyo · ₹23,400 · was ₹68,000 · 66% off · Travel Sep-Nov 2026`.
 3. Each card has a sparkline of 90-day price history for that route-month bucket.
 4. CTA button opens Google Flights in a new tab, pre-filled with the route and date range — affiliate redirect via Travelpayouts so outbound clicks earn commission.
-5. Optional sidebar: "email me the daily digest" — single email field, no auth, Resend stores the list, one email per day at 08:00 IST.
+5. Optional sidebar: "email me the daily digest" — single email field, no auth, Brevo stores the list, one email per day at 08:00 IST.
 
 That's the whole product.
 
 ## Architecture
 
-Two processes, one DB.
+Three processes on the droplet (one Flask API, two Python scripts run by cron), one SQLite DB, one Next.js app on Vercel.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Postinnator droplet (DigitalOcean, 2GB)                    │
+│  Postinnator droplet (DO, existing, REDACTED_SERVER_IP)         │
+│  Code root: /root/flyingnode/   (isolated from Postinnator) │
 │                                                             │
 │  ┌────────────────┐   ┌─────────────────┐                   │
-│  │ flyingnode-    │──▶│  Postgres 16    │◀──┐               │
-│  │ poller         │   │  (new schema:   │   │               │
-│  │ (systemd timer,│   │   flyingnode)   │   │               │
-│  │  every 6 hrs)  │   └─────────────────┘   │               │
-│  └────────────────┘                         │               │
-│                                             │               │
-│  ┌────────────────┐                         │               │
-│  │ flyingnode-    │─────────────────────────┘               │
-│  │ digest         │                                         │
-│  │ (systemd timer,│  ─── Resend API                         │
-│  │  daily 08:00)  │                                         │
-│  └────────────────┘                                         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              │ reads via HTTPS
-                              ▼
+│  │ poller.py      │──▶│  SQLite         │◀──┐               │
+│  │ (cron, 6h)     │   │  flyingnode.db  │   │               │
+│  └────────────────┘   │  (separate file,│   │               │
+│                       │   never shares  │   │               │
+│  ┌────────────────┐   │   postinnator.db)│  │               │
+│  │ digest.py      │   └─────────────────┘   │               │
+│  │ (cron, 08:00)  │      ▲                  │               │
+│  │ — Brevo API    │      │                  │               │
+│  └────────────────┘      │                  │               │
+│                     ┌────┴─────────┐        │               │
+│                     │ api.py       │        │               │
+│                     │ Flask :8081  │────────┘               │
+│                     │ read-only    │                        │
+│                     └──────────────┘                        │
+│                            ▲                                │
+│                            │ nginx (api.flyingnode.com)     │
+└────────────────────────────┼────────────────────────────────┘
+                             │ HTTPS JSON
+                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Vercel — Next.js 15 app                                    │
 │  flyingnode.com                                             │
-│  Cloudflare DNS + edge cache                                │
+│  Cloudflare DNS + edge cache (revalidate=600)               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Why this shape
-- Reuses the droplet Kirtan already pays for. Clean namespacing via separate schema and separate systemd unit names prevents cross-contamination with Postinnator.
-- Next.js on Vercel decouples the frontend from the droplet — if the droplet misbehaves the site still renders (reads from a read-only Postgres user over SSL).
-- Two workers not one: polling and digest run on different cadences and shouldn't share failure modes.
+- Reuses the Postinnator droplet. Clean isolation via separate code root (`/root/flyingnode/`), separate DB file (`flyingnode.db` vs `postinnator.db`), separate system user (`flyingnode`), separate log dirs. Flyingnode code never reads Postinnator files and vice versa. Per the isolation rules memory, this is the only acceptable shape.
+- SQLite not Postgres — matches the Postinnator pattern and the droplet's memory budget (512MB).
+- Three responsibilities, three files: poller, digest, read-API. If one fails, the others keep working.
+- Next.js on Vercel decouples the frontend from the droplet. The droplet only exposes a tiny JSON API. The frontend has edge caching so the droplet gets very few hits.
 
-## Data model (Postgres schema: `flyingnode`)
+## Data model (SQLite file: `/root/flyingnode/flyingnode.db`)
 
 ```sql
 -- canonical airport reference
-CREATE TABLE flyingnode.airports (
-  iata          text PRIMARY KEY,
-  name          text NOT NULL,
-  city          text NOT NULL,
-  country       text NOT NULL,
-  is_origin     bool DEFAULT false  -- true for our 3 seed Indian origins
+CREATE TABLE airports (
+  iata          TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  city          TEXT NOT NULL,
+  country       TEXT NOT NULL,
+  is_origin     INTEGER DEFAULT 0          -- 1 for our 3 seed Indian origins
 );
 
 -- route watchlist
-CREATE TABLE flyingnode.routes (
-  id            bigserial PRIMARY KEY,
-  origin        text NOT NULL REFERENCES flyingnode.airports(iata),
-  destination   text NOT NULL REFERENCES flyingnode.airports(iata),
-  active        bool DEFAULT true,
+CREATE TABLE routes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin        TEXT NOT NULL REFERENCES airports(iata),
+  destination   TEXT NOT NULL REFERENCES airports(iata),
+  active        INTEGER DEFAULT 1,
   UNIQUE (origin, destination)
 );
 
 -- every fare observation we pull
-CREATE TABLE flyingnode.fare_observations (
-  id             bigserial PRIMARY KEY,
-  route_id       bigint NOT NULL REFERENCES flyingnode.routes(id),
-  travel_month   date NOT NULL,          -- first of month, e.g. '2026-09-01'
-  price_inr      integer NOT NULL,
-  stops          smallint NOT NULL,
-  layover_hours  numeric(4,1),
-  airline        text,
-  bag_included   bool,
-  raw            jsonb NOT NULL,          -- full API payload for debugging
-  observed_at    timestamptz DEFAULT now()
+CREATE TABLE fare_observations (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  route_id       INTEGER NOT NULL REFERENCES routes(id),
+  travel_month   TEXT NOT NULL,              -- 'YYYY-MM-01'
+  price_inr      INTEGER NOT NULL,
+  stops          INTEGER NOT NULL,
+  layover_hours  REAL,
+  airline        TEXT,
+  bag_included   INTEGER,                    -- 1/0/NULL
+  raw            TEXT NOT NULL,              -- full API payload JSON
+  source         TEXT NOT NULL DEFAULT 'poll', -- 'poll' | 'bootstrap'
+  observed_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX ON flyingnode.fare_observations (route_id, travel_month, observed_at DESC);
+CREATE INDEX idx_fare_obs_route_month ON fare_observations(route_id, travel_month, observed_at DESC);
 
 -- 90-day rolling median baseline, recomputed nightly
-CREATE TABLE flyingnode.route_baselines (
-  route_id         bigint NOT NULL REFERENCES flyingnode.routes(id),
-  travel_month     date NOT NULL,
-  median_price_inr integer NOT NULL,
-  sample_count     integer NOT NULL,
-  computed_at      timestamptz DEFAULT now(),
+CREATE TABLE route_baselines (
+  route_id         INTEGER NOT NULL REFERENCES routes(id),
+  travel_month     TEXT NOT NULL,
+  median_price_inr INTEGER NOT NULL,
+  sample_count     INTEGER NOT NULL,
+  computed_at      TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (route_id, travel_month)
 );
 
 -- live deals surfaced on the site
-CREATE TABLE flyingnode.deals (
-  id                bigserial PRIMARY KEY,
-  route_id          bigint NOT NULL REFERENCES flyingnode.routes(id),
-  travel_month      date NOT NULL,
-  price_inr         integer NOT NULL,
-  baseline_inr      integer NOT NULL,
-  savings_pct       smallint NOT NULL,
-  stops             smallint NOT NULL,
-  layover_hours     numeric(4,1),
-  airline           text,
-  affiliate_url     text NOT NULL,
-  first_seen_at     timestamptz DEFAULT now(),
-  last_seen_at      timestamptz DEFAULT now(),
-  still_live        bool DEFAULT true
+CREATE TABLE deals (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  route_id          INTEGER NOT NULL REFERENCES routes(id),
+  travel_month      TEXT NOT NULL,
+  price_inr         INTEGER NOT NULL,
+  baseline_inr      INTEGER NOT NULL,
+  savings_pct       INTEGER NOT NULL,
+  stops             INTEGER NOT NULL,
+  layover_hours     REAL,
+  airline           TEXT,
+  affiliate_url     TEXT NOT NULL,
+  first_seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  still_live        INTEGER DEFAULT 1
 );
-CREATE INDEX ON flyingnode.deals (still_live, first_seen_at DESC);
+CREATE INDEX idx_deals_live ON deals(still_live, first_seen_at DESC);
 
 -- digest subscribers (no auth, just email)
-CREATE TABLE flyingnode.digest_subscribers (
-  email         text PRIMARY KEY,
-  subscribed_at timestamptz DEFAULT now(),
-  unsubscribed  bool DEFAULT false
+CREATE TABLE digest_subscribers (
+  email          TEXT PRIMARY KEY,
+  subscribed_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  unsubscribed   INTEGER DEFAULT 0,
+  unsubscribe_token TEXT NOT NULL
 );
 ```
+
+Booleans stored as `INTEGER 0/1` (SQLite convention). Dates stored as `TEXT` in ISO 8601 for simplicity and sortability.
 
 ## Seed data (v0)
 
@@ -201,7 +210,7 @@ Travelpayouts provides a `trip.com` / `kiwi` / Google Flights redirect template 
 1. Select all deals where `still_live=true` AND `first_seen_at >= now() - interval '24 hours'`.
 2. Group by origin airport.
 3. Render HTML email from a template. One card per deal, same visual language as the site.
-4. For each subscriber in `digest_subscribers` where `unsubscribed=false`, send via Resend.
+4. For each subscriber in `digest_subscribers` where `unsubscribed=false`, send via Brevo.
 5. Every email includes a one-click unsubscribe link hitting `/api/unsubscribe?token=...`.
 
 No digest if there are zero new deals. Do not send a "nothing today" email — that trains users to ignore you.
@@ -248,11 +257,16 @@ No digest if there are zero new deals. Do not send a "nothing today" email — t
 ## Infrastructure
 
 ### Droplet changes
-- New Postgres user `flyingnode_rw` (full access to `flyingnode` schema only).
-- New user `flyingnode_ro` for Vercel to read (select-only on `deals`, `routes`, `airports`).
-- Two systemd units: `flyingnode-poller.timer` (every 6 hrs), `flyingnode-digest.timer` (daily 08:00 IST).
-- Python 3.12 venv under `/opt/flyingnode/`.
-- Logs to `/var/log/flyingnode/`, rotated via logrotate.
+- New code root `/root/flyingnode/`.
+- Python 3.12 venv under `/root/flyingnode/venv/`.
+- SQLite DB at `/root/flyingnode/flyingnode.db` — mode 640, owned by root.
+- Three root-crontab entries:
+  - `0 */6 * * *` → `/root/flyingnode/venv/bin/python /root/flyingnode/poller.py`
+  - `0 2 * * *` → `/root/flyingnode/venv/bin/python /root/flyingnode/baseline.py` (03:00 IST via server UTC)
+  - `30 2 * * *` → `/root/flyingnode/venv/bin/python /root/flyingnode/digest.py` (08:00 IST — use `TZ=Asia/Kolkata` in crontab prefix for clarity)
+- A small Flask app `api.py` as a systemd service on port 8081, serving `/deals`, `/airports`, `/subscribe`, `/unsubscribe`.
+- Nginx server block for `api.flyingnode.com` → `127.0.0.1:8081`, Let's Encrypt cert.
+- Logs to `/root/flyingnode/logs/`, rotated via logrotate.
 
 ### Vercel
 - Next.js 15 app, Node 20 runtime.
@@ -270,7 +284,7 @@ No digest if there are zero new deals. Do not send a "nothing today" email — t
 | Travelpayouts | primary fare data + affiliate redirects | `X-Access-Token` header | free, earns commission |
 | Duffel (test mode) | optional baggage/fare-family enrichment when Travelpayouts is silent | bearer token | free in test |
 | Amadeus self-service | nightly sanity check on 20 top routes to catch Travelpayouts price drift | OAuth2 | 2k calls/mo free |
-| Resend | email delivery | bearer token | free 3k/mo, 100/day |
+| Brevo | email delivery | bearer token | free 3k/mo, 100/day |
 
 All keys in droplet env file `/etc/flyingnode/env`, mode 600, owned by `flyingnode` system user.
 
