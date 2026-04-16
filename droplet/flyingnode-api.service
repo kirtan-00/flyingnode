@@ -1,0 +1,14 @@
+[Unit]
+Description=flyingnode read API
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/flyingnode/env
+WorkingDirectory=/root/flyingnode
+ExecStart=/root/flyingnode/venv/bin/gunicorn -w 2 -b 127.0.0.1:8081 droplet.api:app
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
