@@ -5,6 +5,7 @@ import DealCard from "@/components/DealCard";
 import CheapFareRow from "@/components/CheapFareRow";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
+import RouteSearch from "@/components/RouteSearch";
 import { listDeals, listCheapest, type Deal, type CheapFare } from "@/lib/api";
 
 export default function Home() {
@@ -44,6 +45,9 @@ export default function Home() {
       <div className="mx-auto max-w-5xl px-6 pb-8">
         <OriginChips onChange={setOrigin} />
       </div>
+
+      {/* Route search */}
+      <RouteSearch />
 
       {/* Deals section */}
       {deals.length > 0 && (

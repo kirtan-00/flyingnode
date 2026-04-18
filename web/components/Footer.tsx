@@ -21,6 +21,11 @@ export default function Footer() {
               How this works
             </a>
           </p>
+          <p>
+            <a href="/history" className="underline underline-offset-2">
+              Deal history
+            </a>
+          </p>
           <p>Built by Kirtan.</p>
           <p className="text-xs opacity-60">
             Not a booking agent. We redirect to Google Flights. We may earn a commission.
