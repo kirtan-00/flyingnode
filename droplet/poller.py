@@ -23,8 +23,18 @@ def load_baseline(conn, route_id: int, travel_month: str) -> Optional[Baseline]:
 def upsert_deal(conn, route_id, travel_month, obs: Observation, baseline: Baseline,
                 savings_pct: int, raw: dict, tp: TPClient):
     r = conn.execute("SELECT origin, destination FROM routes WHERE id=?", (route_id,)).fetchone()
-    depart = raw.get("depart_date") or f"{travel_month[:7]}-15"
-    ret = raw.get("return_date") or f"{travel_month[:7]}-25"
+    from datetime import date, timedelta
+    today = date.today()
+    depart_raw = raw.get("depart_date") or f"{travel_month[:7]}-15"
+    depart_date = date.fromisoformat(depart_raw)
+    if depart_date <= today:
+        depart_date = today + timedelta(days=1)
+    ret_raw = raw.get("return_date")
+    ret_date = date.fromisoformat(ret_raw) if ret_raw else depart_date + timedelta(days=10)
+    if ret_date <= depart_date:
+        ret_date = depart_date + timedelta(days=10)
+    depart = depart_date.isoformat()
+    ret = ret_date.isoformat()
     url = tp.affiliate_url(r["origin"], r["destination"], depart, ret)
 
     existing = conn.execute(
