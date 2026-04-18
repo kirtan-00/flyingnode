@@ -102,11 +102,22 @@ class TPClient:
         return results
 
     def search_with_fallback(self, origin: str, destination: str, n_months: int = 6):
-        """Try v2/month-matrix first, fallback to v1/prices/cheap for broader coverage."""
+        """Try v2/month-matrix → v1/prices/cheap → Amadeus (if configured)."""
         results = self.cheapest_by_month(origin, destination, n_months)
         if results:
             return results
-        return self.cheap_prices(origin, destination)
+        results = self.cheap_prices(origin, destination)
+        if results:
+            return results
+        # Amadeus fallback for routes neither TP endpoint covers
+        try:
+            from droplet.amadeus import AmadeusClient
+            am = AmadeusClient()
+            if am.enabled:
+                return am.search(origin, destination, n_months)
+        except Exception:
+            pass
+        return []
 
     def affiliate_url(self, origin: str, destination: str, depart: str, ret: str) -> str:
         """Return Aviasales deep-link with our marker for commission attribution.
