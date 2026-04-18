@@ -2,16 +2,14 @@
 import { useEffect, useState } from "react";
 import OriginChips from "@/components/OriginChips";
 import DealCard from "@/components/DealCard";
-import CheapFareRow from "@/components/CheapFareRow";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 import RouteSearch from "@/components/RouteSearch";
-import { listDeals, listCheapest, type Deal, type CheapFare } from "@/lib/api";
+import { listDeals, type Deal } from "@/lib/api";
 
 export default function Home() {
   const [origin, setOrigin] = useState<string | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [cheapest, setCheapest] = useState<CheapFare[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -19,14 +17,10 @@ export default function Home() {
     let alive = true;
     setLoading(true);
     setErr(null);
-    Promise.all([
-      listDeals(origin ?? undefined),
-      listCheapest(origin ?? undefined),
-    ])
-      .then(([d, c]) => {
+    listDeals(origin ?? undefined)
+      .then((d) => {
         if (!alive) return;
         setDeals(d);
-        setCheapest(c);
         setLoading(false);
       })
       .catch((e) => {
@@ -52,7 +46,16 @@ export default function Home() {
       {/* Route search */}
       <RouteSearch />
 
-      {/* Lucky Tickets — god's magic prices, ≥70% off */}
+      {loading && (
+        <p className="mx-auto max-w-5xl px-6 text-fn-muted">Looking for deals…</p>
+      )}
+      {!loading && err && (
+        <p className="mx-auto max-w-5xl px-6 text-fn-muted">
+          We couldn't reach the API right now. Back shortly.
+        </p>
+      )}
+
+      {/* Lucky Tickets — ≥70% off */}
       {luckyTickets.length > 0 && (
         <section className="mx-auto max-w-5xl px-6 mb-12">
           <div className="flex items-center gap-3 mb-4">
@@ -88,35 +91,11 @@ export default function Home() {
         </section>
       )}
 
-      {/* Best Regular Fares — cheapest currently available, with booking links */}
-      <section className="mx-auto max-w-5xl px-6">
-        {loading && <p className="text-fn-muted">Looking for fares…</p>}
-        {!loading && err && (
-          <p className="text-fn-muted">
-            We couldn't reach the API right now. Back shortly.
-          </p>
-        )}
-        {!loading && !err && cheapest.length > 0 && (
-          <>
-            <h2 className="font-display text-2xl font-extrabold tracking-tight mb-2">
-              Best regular fares
-            </h2>
-            <p className="text-fn-muted text-sm mb-4">
-              The lowest prices across all monitored routes right now. Not mistake fares, just smart booking.
-            </p>
-            <div className="bg-fn-card rounded-card shadow-fn p-6">
-              {cheapest.map((f, i) => (
-                <CheapFareRow key={`${f.origin}-${f.destination}-${f.travel_month}`} fare={f} i={i} />
-              ))}
-            </div>
-          </>
-        )}
-        {!loading && !err && cheapest.length === 0 && deals.length === 0 && (
-          <p className="text-fn-muted">
-            No fares yet. The algorithm is watching; check back in a few hours.
-          </p>
-        )}
-      </section>
+      {!loading && !err && deals.length === 0 && (
+        <p className="mx-auto max-w-5xl px-6 text-fn-muted mb-12">
+          No deals right now. Search a route above or check back in a few hours.
+        </p>
+      )}
 
       <Footer />
     </main>
