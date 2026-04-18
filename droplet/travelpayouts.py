@@ -66,7 +66,10 @@ class TPClient:
         return out
 
     def affiliate_url(self, origin: str, destination: str, depart: str, ret: str) -> str:
-        """Return Aviasales deep-link with our marker for commission attribution."""
-        d = depart.replace("-", "")[2:]  # YYMMDD
-        r = ret.replace("-", "")[2:]
-        return f"https://www.aviasales.com/search/{origin}{d}{destination}{r}1?marker={self.marker}"
+        """Return Aviasales deep-link with our marker for commission attribution.
+        Aviasales URL format: /search/{origin}{DDMM}{destination}{DDMM}{passengers}
+        """
+        # depart/ret are "YYYY-MM-DD"
+        dd = depart[8:10] + depart[5:7]  # DDMM
+        rd = ret[8:10] + ret[5:7]        # DDMM
+        return f"https://www.aviasales.com/search/{origin}{dd}{destination}{rd}1?marker={self.marker}"
