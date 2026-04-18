@@ -65,6 +65,49 @@ class TPClient:
             })
         return out
 
+    def cheap_prices(self, origin: str, destination: str):
+        """v1/prices/cheap — broader coverage, returns cheapest fare(s) for a route.
+        Travelpayouts uses city codes internally (NYC for JFK, PAR for CDG) but
+        accepts airport codes and maps them. Returns dict keyed by city code."""
+        r = self.s.get(
+            f"{BASE}/v1/prices/cheap",
+            params={
+                "origin": origin,
+                "destination": destination,
+                "currency": "inr",
+            },
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json().get("data", {})
+        results = []
+        for city_code, transfers in data.items():
+            for num_stops, fare in transfers.items():
+                if not isinstance(fare, dict):
+                    continue
+                depart_at = fare.get("departure_at", "")
+                return_at = fare.get("return_at", "")
+                depart_date = depart_at[:10] if depart_at else None
+                return_date = return_at[:10] if return_at else None
+                travel_month = (depart_date[:7] + "-01") if depart_date else None
+                results.append({
+                    "travel_month": travel_month or "2026-06-01",
+                    "price_inr": int(fare.get("price", 0)),
+                    "stops": int(num_stops),
+                    "airline": fare.get("airline"),
+                    "depart_date": depart_date,
+                    "return_date": return_date,
+                    "raw": fare,
+                })
+        return results
+
+    def search_with_fallback(self, origin: str, destination: str, n_months: int = 6):
+        """Try v2/month-matrix first, fallback to v1/prices/cheap for broader coverage."""
+        results = self.cheapest_by_month(origin, destination, n_months)
+        if results:
+            return results
+        return self.cheap_prices(origin, destination)
+
     def affiliate_url(self, origin: str, destination: str, depart: str, ret: str) -> str:
         """Return Aviasales deep-link with our marker for commission attribution.
         Aviasales URL format: /search/{origin}{DDMM}{destination}{DDMM}{passengers}

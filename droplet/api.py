@@ -117,7 +117,7 @@ def search():
         return jsonify({"error": "origin and destination must be 3-letter IATA codes"}), 400
     try:
         tp = TPClient()
-        fares = tp.cheapest_by_month(origin, destination, n_months=6)
+        fares = tp.search_with_fallback(origin, destination, n_months=6)
     except Exception as e:
         return jsonify({"error": str(e)}), 502
     # auto-add searched route to watchlist for future monitoring

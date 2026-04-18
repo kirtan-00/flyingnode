@@ -39,6 +39,9 @@ export default function Home() {
     };
   }, [origin]);
 
+  const luckyTickets = deals.filter((d) => d.savings_pct >= 70);
+  const mistakeFares = deals.filter((d) => d.savings_pct < 70);
+
   return (
     <main>
       <Hero />
@@ -49,21 +52,43 @@ export default function Home() {
       {/* Route search */}
       <RouteSearch />
 
-      {/* Deals section */}
-      {deals.length > 0 && (
+      {/* Lucky Tickets — god's magic prices, ≥70% off */}
+      {luckyTickets.length > 0 && (
+        <section className="mx-auto max-w-5xl px-6 mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-3xl">✈️</span>
+            <div>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight">
+                Lucky Tickets
+              </h2>
+              <p className="text-fn-muted text-sm">
+                Prices so low they shouldn't exist. Grab before they vanish.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {luckyTickets.map((d, i) => (
+              <DealCard key={d.id} deal={d} i={i} lucky />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Mistake Fares — 45-69% off */}
+      {mistakeFares.length > 0 && (
         <section className="mx-auto max-w-5xl px-6 mb-12">
           <h2 className="font-display text-2xl font-extrabold tracking-tight mb-4">
             <span className="text-fn-orange">Mistake fares</span> right now
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {deals.map((d, i) => (
+            {mistakeFares.map((d, i) => (
               <DealCard key={d.id} deal={d} i={i} />
             ))}
           </div>
         </section>
       )}
 
-      {/* Cheapest fares section */}
+      {/* Best Regular Fares — cheapest currently available, with booking links */}
       <section className="mx-auto max-w-5xl px-6">
         {loading && <p className="text-fn-muted">Looking for fares…</p>}
         {!loading && err && (
@@ -74,10 +99,10 @@ export default function Home() {
         {!loading && !err && cheapest.length > 0 && (
           <>
             <h2 className="font-display text-2xl font-extrabold tracking-tight mb-2">
-              Cheapest fares we found
+              Best regular fares
             </h2>
             <p className="text-fn-muted text-sm mb-4">
-              Updated every 6 hours. Not necessarily deals — just the lowest prices right now.
+              The lowest prices across all monitored routes right now. Not mistake fares, just smart booking.
             </p>
             <div className="bg-fn-card rounded-card shadow-fn p-6">
               {cheapest.map((f, i) => (
