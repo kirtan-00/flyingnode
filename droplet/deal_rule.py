@@ -25,7 +25,7 @@ class DealResult:
 MIN_SAMPLES = 5
 STD_THRESHOLD = 0.55      # price must be < 55% of baseline (≥45% off)
 STRICT_THRESHOLD = 0.45   # 55%+ off overrides missing-bag rejection
-MAX_STOPS = 1
+MAX_STOPS = 2
 MAX_LAYOVER_HOURS = 6
 
 

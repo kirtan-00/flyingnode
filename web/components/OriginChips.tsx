@@ -5,6 +5,7 @@ const ORIGINS = [
   { iata: "DEL", city: "Delhi" },
   { iata: "BOM", city: "Mumbai" },
   { iata: "BLR", city: "Bengaluru" },
+  { iata: "AMD", city: "Ahmedabad" },
 ];
 
 export default function OriginChips({

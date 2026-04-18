@@ -9,7 +9,7 @@ export default function SubscribeForm() {
     e.preventDefault();
     setState("sending");
     try {
-      const r = await fetch("/api/subscribe", {
+      const r = await fetch("/subscribe", {
         method: "POST",
         body: JSON.stringify({ email }),
         headers: { "content-type": "application/json" },

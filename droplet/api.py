@@ -79,6 +79,33 @@ def one_deal(deal_id):
     return jsonify({**dict(r), "history": [dict(o) for o in obs]})
 
 
+@app.get("/cheapest")
+def cheapest():
+    """Cheapest current fare per route — shows even when nothing qualifies as a deal."""
+    origin = request.args.get("origin")
+    sql = """
+      SELECT r.origin, r.destination,
+             a_o.city AS origin_city, a_d.city AS dest_city, a_d.country AS dest_country,
+             fo.travel_month, fo.price_inr, fo.stops, fo.airline
+      FROM fare_observations fo
+      JOIN routes r ON r.id = fo.route_id
+      JOIN airports a_o ON a_o.iata = r.origin
+      JOIN airports a_d ON a_d.iata = r.destination
+      WHERE fo.id IN (
+        SELECT fo2.id FROM fare_observations fo2
+        WHERE fo2.route_id = fo.route_id
+        ORDER BY fo2.observed_at DESC LIMIT 1
+      )
+    """
+    params: tuple = ()
+    if origin:
+        sql += " AND r.origin = ?"
+        params = (origin,)
+    sql += " ORDER BY fo.price_inr ASC LIMIT 40"
+    rows = _conn().execute(sql, params).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.post("/subscribe")
 def subscribe():
     body = request.get_json(silent=True) or {}

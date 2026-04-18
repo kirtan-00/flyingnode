@@ -1,4 +1,6 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://flyingnode.duckdns.org";
+const BASE = typeof window !== "undefined"
+  ? window.location.origin
+  : (process.env.NEXT_PUBLIC_API_BASE ?? "https://flyingnode.duckdns.org");
 
 export type Deal = {
   id: number;
@@ -34,5 +36,25 @@ export async function listDeals(origin?: string): Promise<Deal[]> {
 export async function getDeal(id: number): Promise<DealWithHistory> {
   const r = await fetch(`${BASE}/deal/${id}`, { next: { revalidate: 600 } });
   if (!r.ok) throw new Error("deal fetch failed: " + r.status);
+  return r.json();
+}
+
+export type CheapFare = {
+  origin: string;
+  destination: string;
+  origin_city: string;
+  dest_city: string;
+  dest_country: string;
+  travel_month: string;
+  price_inr: number;
+  stops: number;
+  airline: string | null;
+};
+
+export async function listCheapest(origin?: string): Promise<CheapFare[]> {
+  const url = new URL(BASE + "/cheapest");
+  if (origin) url.searchParams.set("origin", origin);
+  const r = await fetch(url.toString(), { next: { revalidate: 600 } });
+  if (!r.ok) throw new Error("cheapest fetch failed: " + r.status);
   return r.json();
 }
