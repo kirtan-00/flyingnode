@@ -9,3 +9,8 @@ node_modules/
 .vercel/
 logs/
 .DS_Store
+
+# ops scripts contain server IPs and key paths — never commit
+deploy.sh
+scripts/
+docs/superpowers/

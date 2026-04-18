@@ -14,7 +14,7 @@ def send(to_email: str, subject: str, html: str) -> dict:
         },
         json={
             "sender": {
-                "email": os.environ.get("BREVO_SENDER_EMAIL", "REDACTED_EMAIL"),
+                "email": os.environ["BREVO_SENDER_EMAIL"],
                 "name": os.environ.get("BREVO_SENDER_NAME", "flyingnode"),
             },
             "to": [{"email": to_email}],
